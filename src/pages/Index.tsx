@@ -170,9 +170,9 @@ export default function Index() {
 
         {/* LOGO */}
         <div className="mp-logo-wrap">
-          <span className="mp-logo-left">МАКС </span>
+          <span className="mp-logo-left">MAX</span>
           <span className="mp-logo-right">
-            П
+            S
             <span className="mp-logo-icon-wrap">
               <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" className="mp-logo-svg">
                 <circle cx="22" cy="22" r="22" fill="url(#g1)"/>
@@ -185,7 +185,7 @@ export default function Index() {
                 </defs>
               </svg>
             </span>
-            ИСК
+            EARCH
           </span>
         </div>
 
