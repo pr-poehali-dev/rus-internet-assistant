@@ -210,19 +210,37 @@
   pointer-events: none;
 }
 
-/* ─── Blocked ─── */
-.mp-blocked {
+/* ─── Alerts ─── */
+.mp-alert {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--mp-red);
   font-size: 14px;
   font-weight: 500;
-  background: rgba(239, 68, 68, 0.06);
-  border: 1px solid rgba(239, 68, 68, 0.2);
   border-radius: 12px;
   padding: 10px 18px;
   animation: mpFadeUp 0.3s ease both;
+  max-width: 500px;
+}
+
+.mp-alert--red {
+  color: var(--mp-red);
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.mp-alert--orange {
+  color: #d97706;
+  background: rgba(217, 119, 6, 0.06);
+  border: 1px solid rgba(217, 119, 6, 0.2);
+}
+
+.mp-icon-orange {
+  color: #d97706;
+}
+
+.mp-mic--error {
+  background: rgba(217, 119, 6, 0.08) !important;
 }
 
 /* ─── Nav buttons ─── */

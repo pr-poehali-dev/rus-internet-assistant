@@ -18,7 +18,7 @@ function containsBadWord(text: string): boolean {
 
 function isUrl(text: string): boolean {
   const t = text.trim();
-  return /^(https?:\/\/|www\.)/i.test(t) || /^[a-zA-Zа-яА-Я0-9-]+\.[a-z]{2,}(\/.*)?$/.test(t);
+  return /^(https?:\/\/|www\.)/i.test(t) || /^[a-zA-Z0-9-]+\.[a-z]{2,}(\/.*)?$/.test(t);
 }
 
 function normalizeUrl(text: string): string {
@@ -27,31 +27,40 @@ function normalizeUrl(text: string): string {
   return "https://" + t;
 }
 
+type MicError = "no-support" | "denied" | null;
+
 export default function Index() {
   const [query, setQuery] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [rippleKeys, setRippleKeys] = useState<number[]>([]);
   const [blocked, setBlocked] = useState(false);
-  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
+  const [micError, setMicError] = useState<MicError>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.lang = "ru-RU";
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.onresult = (e: any) => {
-        const text = e.results[0][0].transcript;
-        setQuery(text);
-        setIsListening(false);
-      };
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
-      recognitionRef.current = recognition;
+    if (!SpeechRecognition) {
+      setMicError("no-support");
+      return;
     }
+    const recognition = new SpeechRecognition();
+    recognition.lang = "ru-RU";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (e: any) => {
+      const text = e.results[0][0].transcript;
+      setQuery(text);
+      setIsListening(false);
+    };
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = (e: any) => {
+      setIsListening(false);
+      if (e.error === "not-allowed" || e.error === "denied") {
+        setMicError("denied");
+      }
+    };
+    recognitionRef.current = recognition;
   }, []);
 
   useEffect(() => {
@@ -65,16 +74,32 @@ export default function Index() {
     }
   }, [isListening]);
 
-  const toggleVoice = () => {
+  const toggleVoice = async () => {
+    if (micError === "no-support") return;
+
+    // Запрашиваем разрешение явно
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      setMicError("denied");
+      return;
+    }
+
     if (!recognitionRef.current) return;
+
     if (isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
       setQuery("");
       setBlocked(false);
-      recognitionRef.current.start();
-      setIsListening(true);
+      setMicError(null);
+      try {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } catch {
+        setIsListening(false);
+      }
     }
   };
 
@@ -85,14 +110,15 @@ export default function Index() {
 
     if (containsBadWord(q)) {
       setBlocked(true);
-      setIframeUrl(null);
       return;
     }
     setBlocked(false);
 
+    // Если это адрес сайта — открываем в новой вкладке
     if (isUrl(q)) {
-      setIframeUrl(normalizeUrl(q));
+      window.open(normalizeUrl(q), "_blank");
     } else {
+      // Обычный поиск — Яндекс в новой вкладке
       window.open(
         `https://yandex.ru/search/?text=${encodeURIComponent(q)}`,
         "_blank"
@@ -103,11 +129,6 @@ export default function Index() {
   const handleChange = (val: string) => {
     setQuery(val);
     setBlocked(false);
-  };
-
-  const closeIframe = () => {
-    setIframeUrl(null);
-    setQuery("");
   };
 
   return (
@@ -148,39 +169,63 @@ export default function Index() {
               onChange={(e) => handleChange(e.target.value)}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder=""
+              placeholder="Поиск или адрес сайта..."
               className="mp-input"
               readOnly={isListening}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
 
-            <button type="button" className="mp-icon-btn" title="Клавиатура">
-              <Icon name="Keyboard" size={22} className="mp-icon-gray" />
-            </button>
+            {query && !isListening && (
+              <button
+                type="button"
+                onClick={() => { setQuery(""); setBlocked(false); }}
+                className="mp-icon-btn"
+                title="Очистить"
+              >
+                <Icon name="X" size={18} className="mp-icon-gray" />
+              </button>
+            )}
 
             <button
               type="button"
               onClick={toggleVoice}
-              className={`mp-icon-btn ${isListening ? "mp-mic--active" : ""}`}
-              title="Голосовой ввод"
+              className={`mp-icon-btn ${isListening ? "mp-mic--active" : ""} ${micError ? "mp-mic--error" : ""}`}
+              title={micError === "no-support" ? "Браузер не поддерживает" : micError === "denied" ? "Разрешите доступ к микрофону" : "Голосовой ввод"}
             >
               {rippleKeys.map((id) => (
                 <span key={id} className="mp-ripple" />
               ))}
-              <Icon name={isListening ? "MicOff" : "Mic"} size={22} className={isListening ? "mp-icon-red" : "mp-icon-gray"} />
+              <Icon
+                name={isListening ? "MicOff" : micError ? "MicOff" : "Mic"}
+                size={22}
+                className={isListening ? "mp-icon-red" : micError ? "mp-icon-orange" : "mp-icon-gray"}
+              />
             </button>
 
-            <button type="button" className="mp-icon-btn" title="Поиск по картинке">
+            <button type="button" className="mp-icon-btn" title="Поиск по картинке"
+              onClick={() => window.open("https://yandex.ru/images/", "_blank")}>
               <Icon name="Camera" size={22} className="mp-icon-gray" />
             </button>
           </div>
         </form>
 
-        {/* BLOCKED MESSAGE */}
+        {/* ERRORS & ALERTS */}
         {blocked && (
-          <div className="mp-blocked">
-            <Icon name="ShieldAlert" size={18} />
+          <div className="mp-alert mp-alert--red">
+            <Icon name="ShieldAlert" size={16} />
             <span>Такой запрос заблокирован. Попробуйте другой.</span>
+          </div>
+        )}
+        {micError === "denied" && !blocked && (
+          <div className="mp-alert mp-alert--orange">
+            <Icon name="MicOff" size={16} />
+            <span>Разрешите доступ к микрофону в настройках браузера.</span>
+          </div>
+        )}
+        {micError === "no-support" && !blocked && (
+          <div className="mp-alert mp-alert--orange">
+            <Icon name="Info" size={16} />
+            <span>Ваш браузер не поддерживает голосовой ввод. Попробуйте Chrome.</span>
           </div>
         )}
 
@@ -196,32 +241,12 @@ export default function Index() {
           </a>
         </div>
 
-        {/* HINT */}
-        {!iframeUrl && !blocked && (
+        {!blocked && !micError && (
           <p className="mp-hint">
-            Введите запрос или адрес сайта — он откроется прямо здесь
+            Введите запрос для поиска или адрес сайта (например, <b>vk.com</b>) — он откроется в новой вкладке
           </p>
         )}
       </main>
-
-      {/* IFRAME OVERLAY */}
-      {iframeUrl && (
-        <div className="mp-iframe-overlay">
-          <div className="mp-iframe-bar">
-            <span className="mp-iframe-url">{iframeUrl}</span>
-            <button onClick={closeIframe} className="mp-iframe-close">
-              <Icon name="X" size={18} />
-              Закрыть
-            </button>
-          </div>
-          <iframe
-            src={iframeUrl}
-            title="result"
-            className="mp-iframe"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-          />
-        </div>
-      )}
     </div>
   );
 }
