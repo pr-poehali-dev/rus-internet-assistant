@@ -281,6 +281,219 @@
   background: rgba(124, 58, 237, 0.04);
 }
 
+/* ─── Alert button ─── */
+.mp-alert-btn {
+  margin-left: 8px;
+  padding: 4px 14px;
+  background: #d97706;
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-family: "Golos Text", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.mp-alert-btn:hover {
+  background: #b45309;
+}
+
+/* ─── Nav custom / add ─── */
+.mp-nav-btn-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.mp-nav-btn--custom {
+  padding-right: 28px;
+}
+
+.mp-nav-delete {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.12);
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  padding: 0;
+}
+.mp-nav-delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--mp-red);
+}
+
+.mp-nav-btn--add {
+  border-style: dashed;
+  color: var(--mp-accent);
+  background: rgba(124, 58, 237, 0.03);
+}
+.mp-nav-btn--add:hover {
+  background: rgba(124, 58, 237, 0.08);
+  border-color: var(--mp-accent);
+  color: var(--mp-accent);
+}
+
+/* ─── Add modal ─── */
+.mp-add-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: mpFadeUp 0.2s ease both;
+  backdrop-filter: blur(4px);
+}
+
+.mp-add-modal {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 380px;
+  margin: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  animation: mpScaleIn 0.2s ease both;
+}
+
+.mp-add-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 0;
+}
+
+.mp-add-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--mp-text);
+}
+
+.mp-add-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  transition: background 0.15s;
+}
+.mp-add-close:hover {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.mp-add-body {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mp-add-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mp-add-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mp-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.mp-add-input {
+  border: 1.5px solid var(--mp-border);
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-family: "Golos Text", sans-serif;
+  font-size: 15px;
+  color: var(--mp-text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.mp-add-input:focus {
+  border-color: var(--mp-accent);
+}
+
+.mp-add-error {
+  font-size: 13px;
+  color: var(--mp-red);
+  margin: 0;
+}
+
+.mp-add-footer {
+  padding: 0 20px 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.mp-add-cancel {
+  padding: 10px 20px;
+  border: 1.5px solid var(--mp-border);
+  border-radius: 12px;
+  background: #fff;
+  font-family: "Golos Text", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mp-gray);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mp-add-cancel:hover {
+  background: #f5f5f5;
+}
+
+.mp-add-save {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 12px;
+  background: var(--mp-accent);
+  font-family: "Golos Text", sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.15s;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.3);
+}
+.mp-add-save:hover {
+  background: #6d28d9;
+  transform: translateY(-1px);
+}
+
+@keyframes mpScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 /* ─── Hint ─── */
 .mp-hint {
   font-size: 13px;

@@ -29,6 +29,24 @@ function normalizeUrl(text: string): string {
 
 type MicError = "no-support" | "denied" | null;
 
+interface CustomLink {
+  id: number;
+  name: string;
+  url: string;
+}
+
+const STORAGE_KEY = "maks-custom-links";
+
+function loadLinks(): CustomLink[] {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  } catch { return []; }
+}
+
+function saveLinks(links: CustomLink[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(links));
+}
+
 export default function Index() {
   const [query, setQuery] = useState("");
   const [isListening, setIsListening] = useState(false);
@@ -36,6 +54,13 @@ export default function Index() {
   const [rippleKeys, setRippleKeys] = useState<number[]>([]);
   const [blocked, setBlocked] = useState(false);
   const [micError, setMicError] = useState<MicError>(null);
+
+  const [customLinks, setCustomLinks] = useState<CustomLink[]>(loadLinks);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+  const [addError, setAddError] = useState("");
+
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -49,16 +74,13 @@ export default function Index() {
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.onresult = (e: any) => {
-      const text = e.results[0][0].transcript;
-      setQuery(text);
+      setQuery(e.results[0][0].transcript);
       setIsListening(false);
     };
     recognition.onend = () => setIsListening(false);
     recognition.onerror = (e: any) => {
       setIsListening(false);
-      if (e.error === "not-allowed" || e.error === "denied") {
-        setMicError("denied");
-      }
+      if (e.error === "not-allowed" || e.error === "denied") setMicError("denied");
     };
     recognitionRef.current = recognition;
   }, []);
@@ -74,19 +96,24 @@ export default function Index() {
     }
   }, [isListening]);
 
+  const requestMicPermission = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicError(null);
+    } catch {
+      setMicError("denied");
+    }
+  };
+
   const toggleVoice = async () => {
     if (micError === "no-support") return;
-
-    // Запрашиваем разрешение явно
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
       setMicError("denied");
       return;
     }
-
     if (!recognitionRef.current) return;
-
     if (isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
@@ -107,33 +134,40 @@ export default function Index() {
     e?.preventDefault();
     const q = query.trim();
     if (!q) return;
-
-    if (containsBadWord(q)) {
-      setBlocked(true);
-      return;
-    }
+    if (containsBadWord(q)) { setBlocked(true); return; }
     setBlocked(false);
-
-    // Если это адрес сайта — открываем в новой вкладке
     if (isUrl(q)) {
       window.open(normalizeUrl(q), "_blank");
     } else {
-      // Обычный поиск — Яндекс в новой вкладке
-      window.open(
-        `https://yandex.ru/search/?text=${encodeURIComponent(q)}`,
-        "_blank"
-      );
+      window.open(`https://yandex.ru/search/?text=${encodeURIComponent(q)}`, "_blank");
     }
   };
 
-  const handleChange = (val: string) => {
-    setQuery(val);
-    setBlocked(false);
+  const handleAddLink = () => {
+    const name = newName.trim();
+    const url = newUrl.trim();
+    if (!name) { setAddError("Введите название"); return; }
+    if (!url) { setAddError("Введите адрес сайта"); return; }
+    const normalized = normalizeUrl(url);
+    const updated = [...customLinks, { id: Date.now(), name, url: normalized }];
+    setCustomLinks(updated);
+    saveLinks(updated);
+    setNewName("");
+    setNewUrl("");
+    setAddError("");
+    setShowAddForm(false);
+  };
+
+  const handleDeleteLink = (id: number) => {
+    const updated = customLinks.filter((l) => l.id !== id);
+    setCustomLinks(updated);
+    saveLinks(updated);
   };
 
   return (
     <div className="mp-root">
       <main className="mp-main">
+
         {/* LOGO */}
         <div className="mp-logo-wrap">
           <span className="mp-logo-left">МАКС </span>
@@ -161,12 +195,11 @@ export default function Index() {
             <button type="submit" className="mp-icon-btn mp-search-btn">
               <Icon name="Search" size={22} className="mp-icon-search" />
             </button>
-
             <input
               ref={inputRef}
               type="text"
               value={isListening ? "Говорите..." : query}
-              onChange={(e) => handleChange(e.target.value)}
+              onChange={(e) => { setQuery(e.target.value); setBlocked(false); }}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               placeholder="Поиск или адрес сайта..."
@@ -174,78 +207,130 @@ export default function Index() {
               readOnly={isListening}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
-
             {query && !isListening && (
-              <button
-                type="button"
-                onClick={() => { setQuery(""); setBlocked(false); }}
-                className="mp-icon-btn"
-                title="Очистить"
-              >
+              <button type="button" onClick={() => { setQuery(""); setBlocked(false); }} className="mp-icon-btn">
                 <Icon name="X" size={18} className="mp-icon-gray" />
               </button>
             )}
-
             <button
               type="button"
               onClick={toggleVoice}
               className={`mp-icon-btn ${isListening ? "mp-mic--active" : ""} ${micError ? "mp-mic--error" : ""}`}
-              title={micError === "no-support" ? "Браузер не поддерживает" : micError === "denied" ? "Разрешите доступ к микрофону" : "Голосовой ввод"}
+              title="Голосовой ввод"
             >
-              {rippleKeys.map((id) => (
-                <span key={id} className="mp-ripple" />
-              ))}
+              {rippleKeys.map((id) => <span key={id} className="mp-ripple" />)}
               <Icon
-                name={isListening ? "MicOff" : micError ? "MicOff" : "Mic"}
+                name={isListening ? "MicOff" : "Mic"}
                 size={22}
                 className={isListening ? "mp-icon-red" : micError ? "mp-icon-orange" : "mp-icon-gray"}
               />
             </button>
-
-            <button type="button" className="mp-icon-btn" title="Поиск по картинке"
-              onClick={() => window.open("https://yandex.ru/images/", "_blank")}>
+            <button type="button" className="mp-icon-btn"
+              onClick={() => window.open("https://yandex.ru/images/", "_blank")} title="Поиск по картинке">
               <Icon name="Camera" size={22} className="mp-icon-gray" />
             </button>
           </div>
         </form>
 
-        {/* ERRORS & ALERTS */}
+        {/* ALERTS */}
         {blocked && (
           <div className="mp-alert mp-alert--red">
             <Icon name="ShieldAlert" size={16} />
             <span>Такой запрос заблокирован. Попробуйте другой.</span>
           </div>
         )}
-        {micError === "denied" && !blocked && (
+        {micError === "denied" && (
           <div className="mp-alert mp-alert--orange">
             <Icon name="MicOff" size={16} />
-            <span>Разрешите доступ к микрофону в настройках браузера.</span>
+            <span>Нет доступа к микрофону.</span>
+            <button className="mp-alert-btn" onClick={requestMicPermission}>
+              Разрешить
+            </button>
           </div>
         )}
-        {micError === "no-support" && !blocked && (
+        {micError === "no-support" && (
           <div className="mp-alert mp-alert--orange">
             <Icon name="Info" size={16} />
-            <span>Ваш браузер не поддерживает голосовой ввод. Попробуйте Chrome.</span>
+            <span>Голосовой ввод не поддерживается. Используйте Chrome.</span>
           </div>
         )}
 
         {/* NAV BUTTONS */}
         <div className="mp-nav-btns">
           <a href="https://yandex.ru/images" target="_blank" rel="noreferrer" className="mp-nav-btn">
-            <Icon name="Image" size={16} />
+            <Icon name="Image" size={15} />
             Картинки
           </a>
           <a href="https://dzen.ru/news" target="_blank" rel="noreferrer" className="mp-nav-btn">
-            <Icon name="Newspaper" size={16} />
+            <Icon name="Newspaper" size={15} />
             Новости
           </a>
+          {customLinks.map((link) => (
+            <div key={link.id} className="mp-nav-btn-wrap">
+              <a href={link.url} target="_blank" rel="noreferrer" className="mp-nav-btn mp-nav-btn--custom">
+                <Icon name="Globe" size={15} />
+                {link.name}
+              </a>
+              <button className="mp-nav-delete" onClick={() => handleDeleteLink(link.id)} title="Удалить">
+                <Icon name="X" size={12} />
+              </button>
+            </div>
+          ))}
+          <button className="mp-nav-btn mp-nav-btn--add" onClick={() => setShowAddForm(true)}>
+            <Icon name="Plus" size={15} />
+            Добавить
+          </button>
         </div>
 
-        {!blocked && !micError && (
-          <p className="mp-hint">
-            Введите запрос для поиска или адрес сайта (например, <b>vk.com</b>) — он откроется в новой вкладке
-          </p>
+        {/* ADD LINK FORM */}
+        {showAddForm && (
+          <div className="mp-add-overlay" onClick={(e) => e.target === e.currentTarget && setShowAddForm(false)}>
+            <div className="mp-add-modal">
+              <div className="mp-add-header">
+                <span className="mp-add-title">Новая кнопка</span>
+                <button className="mp-add-close" onClick={() => { setShowAddForm(false); setAddError(""); }}>
+                  <Icon name="X" size={18} />
+                </button>
+              </div>
+              <div className="mp-add-body">
+                <div className="mp-add-field">
+                  <label className="mp-add-label">Название</label>
+                  <input
+                    className="mp-add-input"
+                    placeholder="Например: ВКонтакте"
+                    value={newName}
+                    onChange={(e) => { setNewName(e.target.value); setAddError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddLink()}
+                    autoFocus
+                  />
+                </div>
+                <div className="mp-add-field">
+                  <label className="mp-add-label">Адрес сайта</label>
+                  <input
+                    className="mp-add-input"
+                    placeholder="Например: vk.com"
+                    value={newUrl}
+                    onChange={(e) => { setNewUrl(e.target.value); setAddError(""); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddLink()}
+                  />
+                </div>
+                {addError && <p className="mp-add-error">{addError}</p>}
+              </div>
+              <div className="mp-add-footer">
+                <button className="mp-add-cancel" onClick={() => { setShowAddForm(false); setAddError(""); }}>
+                  Отмена
+                </button>
+                <button className="mp-add-save" onClick={handleAddLink}>
+                  Добавить
+                </button>
+              </div>
+            </div>
+          </div>
         )}
+
+        <p className="mp-hint">
+          Введите запрос или адрес сайта — он откроется в новой вкладке
+        </p>
       </main>
     </div>
   );
