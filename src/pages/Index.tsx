@@ -5,17 +5,35 @@ import Icon from "@/components/ui/icon";
 const SpeechRecognition =
   (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
+const BAD_WORDS = [
+  "хуй","пизда","ебать","ебл","блядь","сука","мудак","пиздец",
+  "ёбаный","еблан","залупа","ёб","хуйня","пиздеж","шлюха","ёбать",
+  "fuck","shit","bitch","asshole","cunt","dick","pussy","nigger",
+];
+
+function containsBadWord(text: string): boolean {
+  const lower = text.toLowerCase();
+  return BAD_WORDS.some((w) => lower.includes(w));
+}
+
+function isUrl(text: string): boolean {
+  const t = text.trim();
+  return /^(https?:\/\/|www\.)/i.test(t) || /^[a-zA-Zа-яА-Я0-9-]+\.[a-z]{2,}(\/.*)?$/.test(t);
+}
+
+function normalizeUrl(text: string): string {
+  const t = text.trim();
+  if (/^https?:\/\//i.test(t)) return t;
+  return "https://" + t;
+}
+
 export default function Index() {
   const [query, setQuery] = useState("");
   const [isListening, setIsListening] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [rippleKeys, setRippleKeys] = useState<number[]>([]);
-  const [suggestions] = useState([
-    "Погода в Москве",
-    "Курс доллара сегодня",
-    "Рецепт борща",
-    "Новости России",
-  ]);
+  const [blocked, setBlocked] = useState(false);
+  const [iframeUrl, setIframeUrl] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -54,121 +72,144 @@ export default function Index() {
       setIsListening(false);
     } else {
       setQuery("");
+      setBlocked(false);
       recognitionRef.current.start();
       setIsListening(true);
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (query.trim()) {
+  const handleSearch = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+
+    if (containsBadWord(q)) {
+      setBlocked(true);
+      setIframeUrl(null);
+      return;
+    }
+    setBlocked(false);
+
+    if (isUrl(q)) {
+      setIframeUrl(normalizeUrl(q));
+    } else {
       window.open(
-        `https://yandex.ru/search/?text=${encodeURIComponent(query)}`,
+        `https://yandex.ru/search/?text=${encodeURIComponent(q)}`,
         "_blank"
       );
     }
   };
 
-  const handleSuggestion = (text: string) => {
-    setQuery(text);
-    inputRef.current?.focus();
+  const handleChange = (val: string) => {
+    setQuery(val);
+    setBlocked(false);
+  };
+
+  const closeIframe = () => {
+    setIframeUrl(null);
+    setQuery("");
   };
 
   return (
-    <div className="search-root">
-      <div className="noise-overlay" />
-
-      <header className="search-header">
-        <nav className="search-nav">
-          <span className="logo-text">ПОИСК</span>
-          <div className="nav-links">
-            <a href="#" className="nav-link">Картинки</a>
-            <a href="#" className="nav-link">Новости</a>
-            <a href="#" className="nav-link">Карты</a>
-          </div>
-        </nav>
-      </header>
-
-      <main className="search-main">
-        <div className="hero-section">
-          <div className="logo-block">
-            <div className="logo-orb" />
-            <h1 className="logo-headline">Найдите всё</h1>
-            <p className="logo-subline">Голосовой поиск на русском языке</p>
-          </div>
-
-          <form onSubmit={handleSearch} className="search-form">
-            <div
-              className={`search-box ${isFocused ? "focused" : ""} ${
-                isListening ? "listening" : ""
-              }`}
-            >
-              <Icon name="Search" size={20} className="search-icon" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={isListening ? "Говорите..." : query}
-                onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                placeholder="Введите запрос..."
-                className="search-input"
-                readOnly={isListening}
-              />
-              {query && !isListening && (
-                <button
-                  type="button"
-                  onClick={() => setQuery("")}
-                  className="clear-btn"
-                >
-                  <Icon name="X" size={16} />
-                </button>
-              )}
-              <div className="divider-line" />
-              <button
-                type="button"
-                onClick={toggleVoice}
-                className={`mic-btn ${isListening ? "mic-active" : ""}`}
-              >
-                {rippleKeys.map((id) => (
-                  <span key={id} className="mic-ripple" />
-                ))}
-                <Icon
-                  name={isListening ? "MicOff" : "Mic"}
-                  size={20}
-                  className="mic-icon"
-                />
-              </button>
-            </div>
-
-            <button type="submit" className="search-submit">
-              Найти
-            </button>
-          </form>
-
-          <div className="suggestions">
-            {suggestions.map((s) => (
-              <button
-                key={s}
-                onClick={() => handleSuggestion(s)}
-                className="suggestion-chip"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-
-          {!SpeechRecognition && (
-            <p className="no-speech-warning">
-              Ваш браузер не поддерживает голосовой ввод
-            </p>
-          )}
+    <div className="mp-root">
+      <main className="mp-main">
+        {/* LOGO */}
+        <div className="mp-logo-wrap">
+          <span className="mp-logo-left">МАКС </span>
+          <span className="mp-logo-right">
+            П
+            <span className="mp-logo-icon-wrap">
+              <svg viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" className="mp-logo-svg">
+                <circle cx="22" cy="22" r="22" fill="url(#g1)"/>
+                <path d="M14 18.5C14 15.46 16.46 13 19.5 13h5C27.54 13 30 15.46 30 18.5c0 2.7-1.87 4.96-4.38 5.56L22 30l-3.62-5.94C15.87 23.46 14 21.2 14 18.5z" fill="white"/>
+                <defs>
+                  <linearGradient id="g1" x1="0" y1="0" x2="44" y2="44" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="#a78bfa"/>
+                    <stop offset="1" stopColor="#6d28d9"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </span>
+            ИСК
+          </span>
         </div>
+
+        {/* SEARCH FORM */}
+        <form onSubmit={handleSearch} className="mp-form">
+          <div className={`mp-box ${isFocused ? "mp-box--focused" : ""} ${isListening ? "mp-box--listening" : ""} ${blocked ? "mp-box--blocked" : ""}`}>
+            <button type="submit" className="mp-icon-btn mp-search-btn">
+              <Icon name="Search" size={22} className="mp-icon-search" />
+            </button>
+
+            <input
+              ref={inputRef}
+              type="text"
+              value={isListening ? "Говорите..." : query}
+              onChange={(e) => handleChange(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholder=""
+              className="mp-input"
+              readOnly={isListening}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+            />
+
+            <button type="button" className="mp-icon-btn" title="Клавиатура">
+              <Icon name="Keyboard" size={22} className="mp-icon-gray" />
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleVoice}
+              className={`mp-icon-btn ${isListening ? "mp-mic--active" : ""}`}
+              title="Голосовой ввод"
+            >
+              {rippleKeys.map((id) => (
+                <span key={id} className="mp-ripple" />
+              ))}
+              <Icon name={isListening ? "MicOff" : "Mic"} size={22} className={isListening ? "mp-icon-red" : "mp-icon-gray"} />
+            </button>
+
+            <button type="button" className="mp-icon-btn" title="Поиск по картинке">
+              <Icon name="Camera" size={22} className="mp-icon-gray" />
+            </button>
+          </div>
+        </form>
+
+        {/* BLOCKED MESSAGE */}
+        {blocked && (
+          <div className="mp-blocked">
+            <Icon name="ShieldAlert" size={18} />
+            <span>Такой запрос заблокирован. Попробуйте другой.</span>
+          </div>
+        )}
+
+        {/* HINT */}
+        {!iframeUrl && !blocked && (
+          <p className="mp-hint">
+            Введите запрос или адрес сайта — он откроется прямо здесь
+          </p>
+        )}
       </main>
 
-      <footer className="search-footer">
-        <span>© 2026 · Голосовой поиск</span>
-      </footer>
+      {/* IFRAME OVERLAY */}
+      {iframeUrl && (
+        <div className="mp-iframe-overlay">
+          <div className="mp-iframe-bar">
+            <span className="mp-iframe-url">{iframeUrl}</span>
+            <button onClick={closeIframe} className="mp-iframe-close">
+              <Icon name="X" size={18} />
+              Закрыть
+            </button>
+          </div>
+          <iframe
+            src={iframeUrl}
+            title="result"
+            className="mp-iframe"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          />
+        </div>
+      )}
     </div>
   );
 }
