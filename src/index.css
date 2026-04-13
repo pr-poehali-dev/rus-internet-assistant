@@ -225,6 +225,44 @@
   animation: mpFadeUp 0.3s ease both;
 }
 
+/* ─── Nav buttons ─── */
+.mp-nav-btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  animation: mpFadeUp 0.6s 0.2s ease both;
+}
+
+.mp-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 20px;
+  border: 1.5px solid var(--mp-border);
+  border-radius: 100px;
+  font-family: "Golos Text", sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mp-text);
+  text-decoration: none;
+  background: #fff;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.06);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.15s,
+    background 0.2s;
+}
+
+.mp-nav-btn:hover {
+  border-color: var(--mp-accent);
+  color: var(--mp-accent);
+  box-shadow: 0 2px 12px rgba(124, 58, 237, 0.12);
+  transform: translateY(-1px);
+  background: rgba(124, 58, 237, 0.04);
+}
+
 /* ─── Hint ─── */
 .mp-hint {
   font-size: 13px;

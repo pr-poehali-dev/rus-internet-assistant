@@ -184,6 +184,18 @@ export default function Index() {
           </div>
         )}
 
+        {/* NAV BUTTONS */}
+        <div className="mp-nav-btns">
+          <a href="https://yandex.ru/images" target="_blank" rel="noreferrer" className="mp-nav-btn">
+            <Icon name="Image" size={16} />
+            Картинки
+          </a>
+          <a href="https://dzen.ru/news" target="_blank" rel="noreferrer" className="mp-nav-btn">
+            <Icon name="Newspaper" size={16} />
+            Новости
+          </a>
+        </div>
+
         {/* HINT */}
         {!iframeUrl && !blocked && (
           <p className="mp-hint">
